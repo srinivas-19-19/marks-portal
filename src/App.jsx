@@ -79,19 +79,38 @@ function App() {
     setStudents(newStudents);
   };
 
+  const downloadTemplate = () => {
+    const data = [
+      ['Roll No', 'Name'],
+      ['23BFA05277', 'GERRI VYSHNAVI'],
+      ['23BFA05278', 'GORRIPARTHI SANTHOSH'],
+      ['23BFA05280', 'KARIKERA NAGARAJU GARI SUMANTH']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Student_List_Template.xlsx");
+  };
+
   return (
     <div className="container">
       <div className="no-print">
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h1>Student Marks Portal</h1>
-            <button
-              className="btn btn-outline"
-              onClick={() => setCalculationMode(calculationMode === 'single' ? 'consolidated' : 'single')}
-            >
-              <Layout size={18} />
-              {calculationMode === 'single' ? 'Switch to Consolidated' : 'Switch to Single Exam'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-outline" onClick={downloadTemplate} title="Download Excel Template">
+                <FileSpreadsheet size={18} />
+                Template
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={() => setCalculationMode(calculationMode === 'single' ? 'consolidated' : 'single')}
+              >
+                <Layout size={18} />
+                {calculationMode === 'single' ? 'Switch to Consolidated' : 'Switch to Single Exam'}
+              </button>
+            </div>
           </div>
 
           <div className="form-grid">
