@@ -97,7 +97,7 @@ function App() {
           <div className="form-grid">
             <div className="input-group">
               <label>Faculty Name</label>
-              <input className="input-field" value={facultyName} onChange={(e) => setFacultyName(e.target.value)} placeholder="e.g. Sheshadri" />
+              <input className="input-field" value={facultyName} onChange={(e) => setFacultyName(e.target.value)} placeholder="e.g. John" />
             </div>
             <div className="input-group">
               <label>Course Code</label>
