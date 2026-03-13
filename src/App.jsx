@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Printer, Trash2, Plus, Layout } from 'lucide-react';
 
@@ -8,16 +8,51 @@ const INITIAL_STUDENT = {
   q1: '', q2: '', q3: '', q4: '', q5: '', q6: '',
   objective: '',
   mid1: '', mid2: '',
+  assign1: '', assign2: ''
+};
+
+const PROGRAMS = ['B.Tech', 'M.Tech', 'MBA', 'MCA', 'PHD'];
+const REGULATIONS = ['R20', 'R23', 'R24', 'R25'];
+const DEPARTMENTS = ['CSE', 'ECE', 'CIVIL', 'MEC', 'CSC', 'ETC'];
+const YEARS = ['I', 'II', 'III', 'IV'];
+const SEMESTERS = ['I', 'II'];
+const EXAM_TYPES = ['I Internal Examinations', 'II Internal Examinations', 'Pre-Final Examinations'];
+
+// Mock Faculty Data mapped by Department
+const MOCK_FACULTY = {
+  CSE: ['Sheshadri', 'John Doe', 'Dr. Smith', 'Prof. Alan'],
+  ECE: ['Dr. Ramesh', 'Sivakumar', 'Prof. Reddy'],
+  CIVIL: ['Anil Kumar', 'Dr. Sharma'],
+  MEC: ['Dr. Rao', 'Vikram'],
+  CSC: ['Priya', 'Dr. Venkatesh'],
+  ETC: ['Sanjay', 'Dr. Kumar']
 };
 
 function App() {
   const [calculationMode, setCalculationMode] = useState('single');
+  
+  // V2 Exam Metadata States
+  const [program, setProgram] = useState('B.Tech');
+  const [regulation, setRegulation] = useState('R23');
+  const [department, setDepartment] = useState('CSE');
+  const [year, setYear] = useState('II');
+  const [semesterNum, setSemesterNum] = useState('II');
+  const [examType, setExamType] = useState('I Internal Examinations');
+  const [examMonthYear, setExamMonthYear] = useState('Feb - 2026');
+  
   const [facultyName, setFacultyName] = useState('');
   const [courseCode, setCourseCode] = useState('');
   const [subjectName, setSubjectName] = useState('');
-  const [semester, setSemester] = useState('II B.Tech II Semester (CSE) I Internal Examinations Feb - 2026');
+  
   const [students, setStudents] = useState([INITIAL_STUDENT]);
   const fileInputRef = useRef(null);
+
+  // Derived Values
+  const availableFaculty = useMemo(() => MOCK_FACULTY[department] || [], [department]);
+  
+  const generatedSemesterString = useMemo(() => {
+    return `${year} ${program} ${semesterNum} Semester (${department}) ${examType} ${examMonthYear}`;
+  }, [year, program, semesterNum, department, examType, examMonthYear]);
 
   const calculateResult = (student) => {
     if (calculationMode === 'single') {
@@ -32,19 +67,27 @@ function App() {
       const m1 = Math.max(q1, q2);
       const m2 = Math.max(q3, q4);
       const m3 = Math.max(q5, q6);
-
+      
       const total30 = m1 + m2 + m3;
       const descriptive15 = Math.ceil(total30 / 2);
       const final25 = descriptive15 + objective;
 
       return { total30, descriptive15, final25 };
     } else {
+      // Consolidated Mode V2 (+ Assignments)
       const m1 = Number(student.mid1) || 0;
       const m2 = Number(student.mid2) || 0;
+      const a1 = Number(student.assign1) || 0;
+      const a2 = Number(student.assign2) || 0;
+
       const maxMid = Math.max(m1, m2);
       const minMid = Math.min(m1, m2);
-      const final25 = Math.round(maxMid * 0.8 + minMid * 0.2);
-      return { final25 };
+      
+      const internalMarks25 = Math.round(maxMid * 0.8 + minMid * 0.2);
+      const assignment5 = Math.ceil((a1 + a2) / 2);
+      const final30 = internalMarks25 + assignment5;
+
+      return { internalMarks25, assignment5, final30 };
     }
   };
 
@@ -93,7 +136,7 @@ function App() {
   };
 
   return (
-    <div className="container">
+    <div className="container" style={{ maxWidth: '1400px' }}>
       <div className="no-print">
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -103,32 +146,82 @@ function App() {
                 <FileSpreadsheet size={18} />
                 Template
               </button>
-              <button
-                className="btn btn-outline"
+              <button 
+                className="btn btn-outline" 
                 onClick={() => setCalculationMode(calculationMode === 'single' ? 'consolidated' : 'single')}
               >
                 <Layout size={18} />
-                {calculationMode === 'single' ? 'Switch to Consolidated' : 'Switch to Single Exam'}
+                {calculationMode === 'single' ? 'Switch to Consolidated View' : 'Switch to Single Exam View'}
               </button>
             </div>
           </div>
 
-          <div className="form-grid">
-            <div className="input-group">
-              <label>Faculty Name</label>
-              <input className="input-field" value={facultyName} onChange={(e) => setFacultyName(e.target.value)} placeholder="e.g. John" />
+          <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', color: '#334155' }}>Exam Metadata</h3>
+            <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              <div className="input-group">
+                <label>Program</label>
+                <select className="select-field" value={program} onChange={(e) => setProgram(e.target.value)}>
+                  {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Regulation</label>
+                <select className="select-field" value={regulation} onChange={(e) => setRegulation(e.target.value)}>
+                  {REGULATIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Department</label>
+                <select className="select-field" value={department} onChange={(e) => {
+                  setDepartment(e.target.value);
+                  setFacultyName(''); // Reset faculty when dept changes
+                }}>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Year</label>
+                <select className="select-field" value={year} onChange={(e) => setYear(e.target.value)}>
+                  {(program === 'M.Tech' || program === 'MBA' ? ['I', 'II'] : YEARS).map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Semester</label>
+                <select className="select-field" value={semesterNum} onChange={(e) => setSemesterNum(e.target.value)}>
+                  {SEMESTERS.map(s => <option key={s} value={s}>{s} Semester</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Exam Type</label>
+                <select className="select-field" value={examType} onChange={(e) => setExamType(e.target.value)}>
+                  {EXAM_TYPES.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Month & Year</label>
+                <input className="input-field" value={examMonthYear} onChange={(e) => setExamMonthYear(e.target.value)} placeholder="e.g. Feb - 2026" />
+              </div>
             </div>
-            <div className="input-group">
-              <label>Course Code</label>
-              <input className="input-field" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} placeholder="e.g. CSEM305" />
-            </div>
-            <div className="input-group">
-              <label>Subject Name</label>
-              <input className="input-field" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. DBMS" />
-            </div>
-            <div className="input-group">
-              <label>Semester / Examination</label>
-              <input className="input-field" value={semester} onChange={(e) => setSemester(e.target.value)} />
+            
+            <hr style={{ margin: '1.5rem 0', borderColor: '#e2e8f0' }} />
+            
+            <div className="form-grid">
+              <div className="input-group">
+                <label>Faculty Name</label>
+                <select className="select-field" value={facultyName} onChange={(e) => setFacultyName(e.target.value)}>
+                  <option value="">-- Select Faculty --</option>
+                  {availableFaculty.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Subject Name</label>
+                <input className="input-field" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. DBMS" />
+              </div>
+              <div className="input-group">
+                <label>Course Code</label>
+                <input className="input-field" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} placeholder="e.g. CSEM305" />
+              </div>
             </div>
           </div>
 
@@ -148,21 +241,26 @@ function App() {
             <table>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', width: '140px' }}>Roll No</th>
-                  <th style={{ textAlign: 'left', width: '220px' }}>Name</th>
+                  <th style={{ textAlign: 'left', width: '120px' }}>Roll No</th>
+                  <th style={{ textAlign: 'left', width: '200px' }}>Name</th>
                   {calculationMode === 'single' ? (
                     <>
                       <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Q6</th>
                       <th>Obj</th>
+                      <th>Final</th>
                     </>
                   ) : (
                     <>
-                      <th>Mid 1 (25)</th>
-                      <th>Mid 2 (25)</th>
+                      <th>MID-I<br/>(Max:25)</th>
+                      <th>MID-II<br/>(Max:25)</th>
+                      <th>Internal<br/>Marks (25)</th>
+                      <th>Assign 1<br/>(05)</th>
+                      <th>Assign 2<br/>(05)</th>
+                      <th>Assign<br/>(05)</th>
+                      <th>Final<br/>(30)</th>
                     </>
                   )}
-                  <th>Final</th>
-                  <th style={{ width: '60px' }}></th>
+                  <th style={{ width: '50px' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -170,8 +268,8 @@ function App() {
                   const res = calculateResult(student);
                   return (
                     <tr key={index}>
-                      <td><input className="input-field" style={{ padding: '0.4rem', fontSize: '0.9rem' }} value={student.rollNo} onChange={(e) => updateStudentField(index, 'rollNo', e.target.value)} /></td>
-                      <td><input className="input-field" style={{ textAlign: 'left', padding: '0.4rem', fontSize: '0.9rem' }} value={student.name} onChange={(e) => updateStudentField(index, 'name', e.target.value)} /></td>
+                      <td><input className="input-field" style={{ padding: '0.4rem', fontSize: '0.85rem' }} value={student.rollNo} onChange={(e) => updateStudentField(index, 'rollNo', e.target.value)} /></td>
+                      <td><input className="input-field" style={{ textAlign: 'left', padding: '0.4rem', fontSize: '0.85rem' }} value={student.name} onChange={(e) => updateStudentField(index, 'name', e.target.value)} /></td>
                       {calculationMode === 'single' ? (
                         <>
                           <td><input className="marks-input" value={student.q1} onChange={(e) => updateStudentField(index, 'q1', e.target.value)} /></td>
@@ -181,14 +279,19 @@ function App() {
                           <td><input className="marks-input" value={student.q5} onChange={(e) => updateStudentField(index, 'q5', e.target.value)} /></td>
                           <td><input className="marks-input" value={student.q6} onChange={(e) => updateStudentField(index, 'q6', e.target.value)} /></td>
                           <td><input className="marks-input" value={student.objective} onChange={(e) => updateStudentField(index, 'objective', e.target.value)} /></td>
+                          <td style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.2rem' }}>{res.final25}</td>
                         </>
                       ) : (
                         <>
-                          <td><input className="marks-input" style={{ maxWidth: '100px' }} value={student.mid1} onChange={(e) => updateStudentField(index, 'mid1', e.target.value)} /></td>
-                          <td><input className="marks-input" style={{ maxWidth: '100px' }} value={student.mid2} onChange={(e) => updateStudentField(index, 'mid2', e.target.value)} /></td>
+                          <td><input className="marks-input" style={{ maxWidth: '80px' }} value={student.mid1} onChange={(e) => updateStudentField(index, 'mid1', e.target.value)} /></td>
+                          <td><input className="marks-input" style={{ maxWidth: '80px' }} value={student.mid2} onChange={(e) => updateStudentField(index, 'mid2', e.target.value)} /></td>
+                          <td style={{ fontWeight: 600, color: '#334155' }}>{res.internalMarks25}</td>
+                          <td><input className="marks-input" style={{ maxWidth: '70px' }} value={student.assign1} onChange={(e) => updateStudentField(index, 'assign1', e.target.value)} /></td>
+                          <td><input className="marks-input" style={{ maxWidth: '70px' }} value={student.assign2} onChange={(e) => updateStudentField(index, 'assign2', e.target.value)} /></td>
+                          <td style={{ fontWeight: 600, color: '#334155' }}>{res.assignment5}</td>
+                          <td style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.2rem' }}>{res.final30}</td>
                         </>
                       )}
-                      <td style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.2rem' }}>{res.final25}</td>
                       <td>
                         <button onClick={() => setStudents(students.filter((_, i) => i !== index))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
                           <Trash2 size={18} />
@@ -212,7 +315,7 @@ function App() {
           <h1>SV COLLEGE OF ENGINEERING</h1>
           <div style={{ fontWeight: 'bold' }}>(AUTONOMOUS)</div>
           <div style={{ fontSize: '0.8rem' }}>Karakambadi Road, Tirupati-517507</div>
-          <div style={{ marginTop: '1rem', fontWeight: 600 }}>{semester}</div>
+          <div style={{ marginTop: '1rem', fontWeight: 600 }}>{generatedSemesterString}</div>
           <h2 style={{ marginTop: '1rem', textDecoration: 'underline', fontSize: '1.2rem' }}>Award List</h2>
         </div>
 
@@ -250,9 +353,13 @@ function App() {
                 <th style={{ border: '1px solid black' }}>S.No</th>
                 <th style={{ border: '1px solid black' }}>Roll Number</th>
                 <th style={{ border: '1px solid black' }}>Name of the Student</th>
-                <th style={{ border: '1px solid black' }}>Mid 1 (25M)</th>
-                <th style={{ border: '1px solid black' }}>Mid 2 (25M)</th>
-                <th style={{ border: '1px solid black' }}>Final (25M)</th>
+                <th style={{ border: '1px solid black' }}>MID-I<br/>(Max:25)</th>
+                <th style={{ border: '1px solid black' }}>MID-II<br/>(Max:25)</th>
+                <th style={{ border: '1px solid black' }}>Internal<br/>Marks</th>
+                <th style={{ border: '1px solid black' }}>Assignment 1<br/>(05)</th>
+                <th style={{ border: '1px solid black' }}>Assignment 2<br/>(05)</th>
+                <th style={{ border: '1px solid black' }}>Assignment</th>
+                <th style={{ border: '1px solid black' }}>Final Internal<br/>Marks (30)</th>
               </tr>
             )}
           </thead>
@@ -275,14 +382,19 @@ function App() {
                       <td style={{ border: '1px solid black' }}>{res.total30}</td>
                       <td style={{ border: '1px solid black' }}>{res.descriptive15}</td>
                       <td style={{ border: '1px solid black' }}>{student.objective || 0}</td>
+                      <td style={{ border: '1px solid black', fontWeight: 'bold' }}>{res.final25}</td>
                     </>
                   ) : (
                     <>
                       <td style={{ border: '1px solid black' }}>{student.mid1 || '-'}</td>
                       <td style={{ border: '1px solid black' }}>{student.mid2 || '-'}</td>
+                      <td style={{ border: '1px solid black' }}>{res.internalMarks25}</td>
+                      <td style={{ border: '1px solid black' }}>{student.assign1 || '-'}</td>
+                      <td style={{ border: '1px solid black' }}>{student.assign2 || '-'}</td>
+                      <td style={{ border: '1px solid black' }}>{res.assignment5}</td>
+                      <td style={{ border: '1px solid black', fontWeight: 'bold' }}>{res.final30}</td>
                     </>
                   )}
-                  <td style={{ border: '1px solid black', fontWeight: 'bold' }}>{res.final25}</td>
                 </tr>
               )
             })}
